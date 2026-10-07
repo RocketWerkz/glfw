@@ -5578,7 +5578,7 @@ GLFWAPI GLFWscrolldetailfun glfwSetScrollDetailCallback(GLFWwindow* window, GLFW
 /*! @brief Sets the trackpad zoom callback.
  *
  *  This function sets the trackpad zoom of the specified window, which is
- *  called when a trackpad magnification gesture is used on macOS.
+ *  called when a trackpad magnification gesture is used on macOS or Wayland.
  *
  *  @param[in] window The window whose callback to set.
  *  @param[in] callback The new trackpad zoom callback, or `NULL` to remove the
@@ -5608,7 +5608,7 @@ GLFWAPI GLFWtrackpadzoomfun glfwSetTrackpadZoomCallback(GLFWwindow* window, GLFW
 /*! @brief Sets the trackpad rotate callback.
  *
  *  This function sets the trackpad rotate of the specified window, which is
- *  called when a trackpad rotation gesture is used on macOS.
+ *  called when a trackpad rotation gesture is used on macOS or Wayland.
  *
  *  @param[in] window The window whose callback to set.
  *  @param[in] callback The new trackpad rotate callback, or `NULL` to remove the

@@ -49,6 +49,7 @@
 #include "xdg-decoration-unstable-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "relative-pointer-unstable-v1-client-protocol.h"
+#include "pointer-gestures-unstable-v1-client-protocol.h"
 #include "pointer-constraints-unstable-v1-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
@@ -1605,6 +1606,72 @@ static void processPointerScroll(double xoffset, double yoffset)
         _glfwInputScroll(window, xoffset, yoffset);
 }
 
+static void pinchHandleBegin(void* userData,
+                             struct zwp_pointer_gesture_pinch_v1* pinch,
+                             uint32_t serial,
+                             uint32_t time,
+                             struct wl_surface* surface,
+                             uint32_t fingers)
+{
+    _glfw.wl.pinchScale = 1.0;
+}
+
+static void pinchHandleUpdate(void* userData,
+                              struct zwp_pointer_gesture_pinch_v1* pinch,
+                              uint32_t time,
+                              wl_fixed_t dx,
+                              wl_fixed_t dy,
+                              wl_fixed_t scale,
+                              wl_fixed_t rotation)
+{
+    if (!_glfw.wl.pointerSurface)
+        return;
+
+    _GLFWwindow* window = wl_surface_get_user_data(_glfw.wl.pointerSurface);
+    if (window->wl.surface != _glfw.wl.pointerSurface)
+        return;
+
+    // The protocol reports scale relative to the start of the gesture, GLFW
+    // reports it relative to the previous event
+    const double totalScale = wl_fixed_to_double(scale);
+    if (totalScale > 0.0 && totalScale != _glfw.wl.pinchScale)
+    {
+        _glfwInputTrackpadZoom(window, totalScale / _glfw.wl.pinchScale);
+        _glfw.wl.pinchScale = totalScale;
+    }
+
+    // The protocol reports clockwise degrees, GLFW reports counter-clockwise
+    // degrees to match macOS
+    const double angle = -wl_fixed_to_double(rotation);
+    if (angle != 0.0)
+        _glfwInputTrackpadRotate(window, angle);
+}
+
+static void pinchHandleEnd(void* userData,
+                           struct zwp_pointer_gesture_pinch_v1* pinch,
+                           uint32_t serial,
+                           uint32_t time,
+                           int32_t cancelled)
+{
+    _glfw.wl.pinchScale = 1.0;
+}
+
+static const struct zwp_pointer_gesture_pinch_v1_listener pinchListener =
+{
+    pinchHandleBegin,
+    pinchHandleUpdate,
+    pinchHandleEnd
+};
+
+static void destroyPinchGesture(void)
+{
+    if (_glfw.wl.pinchGesture)
+    {
+        zwp_pointer_gesture_pinch_v1_destroy(_glfw.wl.pinchGesture);
+        _glfw.wl.pinchGesture = NULL;
+    }
+}
+
 static void pointerHandleEnter(void* userData,
                                struct wl_pointer* pointer,
                                uint32_t serial,
@@ -2077,9 +2144,12 @@ static void seatHandleCapabilities(void* userData,
     {
         _glfw.wl.pointer = wl_seat_get_pointer(seat);
         wl_pointer_add_listener(_glfw.wl.pointer, &pointerListener, NULL);
+        _glfwUpdatePointerGesturesWayland();
     }
     else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && _glfw.wl.pointer)
     {
+        destroyPinchGesture();
+
         if (wl_pointer_get_version(_glfw.wl.pointer) >= WL_POINTER_RELEASE_SINCE_VERSION)
             wl_pointer_release(_glfw.wl.pointer);
         else
@@ -2337,6 +2407,40 @@ void _glfwAddSeatListenerWayland(struct wl_seat* seat)
 void _glfwAddDataDeviceListenerWayland(struct wl_data_device* device)
 {
     wl_data_device_add_listener(device, &dataDeviceListener, NULL);
+}
+
+// The gestures global and the seat's pointer can arrive in either order, so
+// this is called when either does and creates the pinch object once both exist
+//
+void _glfwUpdatePointerGesturesWayland(void)
+{
+    if (!_glfw.wl.pointerGestures || !_glfw.wl.pointer || _glfw.wl.pinchGesture)
+        return;
+
+    _glfw.wl.pinchGesture =
+        zwp_pointer_gestures_v1_get_pinch_gesture(_glfw.wl.pointerGestures,
+                                                  _glfw.wl.pointer);
+    zwp_pointer_gesture_pinch_v1_add_listener(_glfw.wl.pinchGesture,
+                                              &pinchListener,
+                                              NULL);
+}
+
+void _glfwDestroyPointerGesturesWayland(void)
+{
+    destroyPinchGesture();
+
+    if (_glfw.wl.pointerGestures)
+    {
+        if (zwp_pointer_gestures_v1_get_version(_glfw.wl.pointerGestures) >=
+            ZWP_POINTER_GESTURES_V1_RELEASE_SINCE_VERSION)
+        {
+            zwp_pointer_gestures_v1_release(_glfw.wl.pointerGestures);
+        }
+        else
+            zwp_pointer_gestures_v1_destroy(_glfw.wl.pointerGestures);
+
+        _glfw.wl.pointerGestures = NULL;
+    }
 }
 
 GLFWbool _glfwWaitForEGLFrameWayland(_GLFWwindow* window)

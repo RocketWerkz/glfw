@@ -45,6 +45,7 @@
 #include "xdg-decoration-unstable-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "relative-pointer-unstable-v1-client-protocol.h"
+#include "pointer-gestures-unstable-v1-client-protocol.h"
 #include "pointer-constraints-unstable-v1-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
@@ -73,6 +74,10 @@
 
 #define types _glfw_relative_pointer_types
 #include "relative-pointer-unstable-v1-client-protocol-code.h"
+#undef types
+
+#define types _glfw_pointer_gestures_types
+#include "pointer-gestures-unstable-v1-client-protocol-code.h"
 #undef types
 
 #define types _glfw_pointer_constraints_types
@@ -201,12 +206,30 @@ static void registryHandleGlobal(void* userData,
                              &wp_fractional_scale_manager_v1_interface,
                              1);
     }
+    else if (strcmp(interface, "zwp_pointer_gestures_v1") == 0)
+    {
+        if (!_glfw.wl.pointerGestures)
+        {
+            _glfw.wl.pointerGestures =
+                wl_registry_bind(registry, name,
+                                 &zwp_pointer_gestures_v1_interface,
+                                 _glfw_min(2, version));
+            _glfw.wl.pointerGesturesName = name;
+            _glfwUpdatePointerGesturesWayland();
+        }
+    }
 }
 
 static void registryHandleGlobalRemove(void* userData,
                                        struct wl_registry* registry,
                                        uint32_t name)
 {
+    if (_glfw.wl.pointerGestures && name == _glfw.wl.pointerGesturesName)
+    {
+        _glfwDestroyPointerGesturesWayland();
+        return;
+    }
+
     for (int i = 0; i < _glfw.monitorCount; ++i)
     {
         _GLFWmonitor* monitor = _glfw.monitors[i];
@@ -972,6 +995,7 @@ void _glfwTerminateWayland(void)
         wl_data_device_destroy(_glfw.wl.dataDevice);
     if (_glfw.wl.dataDeviceManager)
         wl_data_device_manager_destroy(_glfw.wl.dataDeviceManager);
+    _glfwDestroyPointerGesturesWayland();
     if (_glfw.wl.pointer)
         wl_pointer_destroy(_glfw.wl.pointer);
     if (_glfw.wl.keyboard)

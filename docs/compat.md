@@ -159,6 +159,12 @@ less than the actual scale.
 
 [fractional-scale-v1]: https://wayland.app/protocols/fractional-scale-v1
 
+GLFW uses the [pointer-gestures-unstable-v1][] protocol to report trackpad
+pinch and rotate gestures. If the running compositor does not support this
+protocol, trackpad zoom and rotate events will not be emitted.
+
+[pointer-gestures-unstable-v1]: https://wayland.app/protocols/pointer-gestures-unstable-v1
+
 
 ## GLX extensions {#compat_glx}
 

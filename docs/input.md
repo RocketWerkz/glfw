@@ -615,7 +615,7 @@ scroll detail callback with no flags set.
 
 ### Trackpad zoom and rotate {#input_mouse_trackpad_gestures}
 
-Trackpad events are currently only available on macOS.
+Trackpad events are currently only available on macOS and Wayland.
 
 If you wish to be notified when a zoom gesture is performed on a trackpad,
 set the trackpadZoom callback.

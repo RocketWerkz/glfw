@@ -345,8 +345,8 @@ void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset)
 void _glfwInputTrackpadZoom(_GLFWwindow* window, double scale)
 {
     assert(window != NULL);
-    assert(scale > -FLT_MAX);
-    assert(scale < FLT_MAX);
+    assert(isfinite(scale));
+    assert(scale > 0.0);
 
     if (window->callbacks.trackpadZoom)
         window->callbacks.trackpadZoom((GLFWwindow*) window, scale);
@@ -357,8 +357,7 @@ void _glfwInputTrackpadZoom(_GLFWwindow* window, double scale)
 void _glfwInputTrackpadRotate(_GLFWwindow* window, double angle)
 {
     assert(window != NULL);
-    assert(angle > -FLT_MAX);
-    assert(angle < FLT_MAX);
+    assert(isfinite(angle));
 
     if (window->callbacks.trackpadRotate)
         window->callbacks.trackpadRotate((GLFWwindow*) window, angle);
@@ -1057,10 +1056,11 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* handle,
 GLFWAPI GLFWtrackpadzoomfun glfwSetTrackpadZoomCallback(GLFWwindow* handle,
                                                         GLFWtrackpadzoomfun cbfun)
 {
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
 
-    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     _GLFW_SWAP(GLFWtrackpadzoomfun, window->callbacks.trackpadZoom, cbfun);
     return cbfun;
 }
@@ -1068,10 +1068,11 @@ GLFWAPI GLFWtrackpadzoomfun glfwSetTrackpadZoomCallback(GLFWwindow* handle,
 GLFWAPI GLFWtrackpadrotatefun glfwSetTrackpadRotateCallback(GLFWwindow* handle,
                                                           GLFWtrackpadrotatefun cbfun)
 {
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
 
-    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     _GLFW_SWAP(GLFWtrackpadrotatefun, window->callbacks.trackpadRotate, cbfun);
     return cbfun;
 }

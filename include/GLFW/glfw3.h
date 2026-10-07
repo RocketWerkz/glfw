@@ -1884,7 +1884,7 @@ typedef void (* GLFWscrollfun)(GLFWwindow* window, double xoffset, double yoffse
  *  @endcode
  *
  *  @param[in] window The window that received the event.
- *  @param[in] scale The manigification amount, to be multiplied by the current
+ *  @param[in] scale The magnification amount, to be multiplied by the current
  *  scale factor to get the new scale factor.
  *
  *  @sa @ref glfwSetTrackpadZoomCallback
@@ -1902,7 +1902,8 @@ typedef void (* GLFWtrackpadzoomfun)(GLFWwindow* window, double scale);
  *  @endcode
  *
  *  @param[in] window The window that received the event.
- *  @param[in] angle The rotation amount, in degrees
+ *  @param[in] angle The rotation amount since the previous event, in degrees,
+ *  positive counter-clockwise.
  *
  *  @sa @ref glfwSetTrackpadRotateCallback
  *
@@ -5501,7 +5502,7 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun ca
  *
  *  @sa @ref input_mouse_trackpad_gestures
  *
- *  @since Added in version 3.5.
+ *  @since Added in the RocketWerkz fork of GLFW 3.5.1.
  *
  *  @ingroup input
  */
@@ -5531,7 +5532,7 @@ GLFWAPI GLFWtrackpadzoomfun glfwSetTrackpadZoomCallback(GLFWwindow* window, GLFW
  *
  *  @sa @ref input_mouse_trackpad_gestures
  *
- *  @since Added in version 3.5.
+ *  @since Added in the RocketWerkz fork of GLFW 3.5.1.
  *
  *  @ingroup input
  */

@@ -28,12 +28,14 @@ Base: upstream `3.5.1`.
 | Wayland: Add trackpad zoom and rotate events | Wayland | glfw/glfw#2419 by pfg, Wayland part, ported to 3.5.1 and fixed |
 | Add ROCKETWERKZ.md | - | RocketWerkz |
 | Wayland: Report scroll detail flags | Wayland | RocketWerkz extension |
+| X11: Add trackpad zoom and rotate events | X11 (XInput 2.4) | RocketWerkz |
 
 The API they add:
 
-- `glfwSetTrackpadZoomCallback`: per-event scale factor (macOS, Wayland)
+- `glfwSetTrackpadZoomCallback`: per-event scale factor (macOS, Wayland,
+  X11 with XInput 2.4)
 - `glfwSetTrackpadRotateCallback`: per-event degrees, positive
-  counter-clockwise (macOS, Wayland)
+  counter-clockwise (macOS, Wayland, X11 with XInput 2.4)
 - `glfwSetScrollDetailCallback` and the `GLFW_SCROLL_*` flags: scroll offsets
   with their source and gesture phase (flags on macOS and Wayland; the
   callback works everywhere)

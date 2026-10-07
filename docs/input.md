@@ -620,7 +620,8 @@ Others   | No                       | No                                        
 
 ### Trackpad zoom and rotate {#input_mouse_trackpad_gestures}
 
-Trackpad events are currently only available on macOS and Wayland.
+Trackpad events are currently only available on macOS, Wayland, and X11 servers
+with XInput 2.4 (X.Org Server 21.1 and later).
 
 If you wish to be notified when a zoom gesture is performed on a trackpad,
 set the trackpadZoom callback.

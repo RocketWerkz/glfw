@@ -631,6 +631,23 @@ static GLFWbool createNativeWindow(_GLFWwindow* window,
                  _glfw.x11.context,
                  (XPointer) window);
 
+#if defined(XI_GesturePinchBegin)
+    if (_glfw.x11.xi.gestures)
+    {
+        XIEventMask em;
+        unsigned char mask[XIMaskLen(XI_GesturePinchEnd)] = { 0 };
+
+        em.deviceid = XIAllMasterDevices;
+        em.mask_len = sizeof(mask);
+        em.mask = mask;
+        XISetMask(mask, XI_GesturePinchBegin);
+        XISetMask(mask, XI_GesturePinchUpdate);
+        XISetMask(mask, XI_GesturePinchEnd);
+
+        XISelectEvents(_glfw.x11.display, window->x11.handle, &em, 1);
+    }
+#endif
+
     if (!wndconfig->decorated)
         _glfwSetWindowDecoratedX11(window, GLFW_FALSE);
 
@@ -1145,6 +1162,41 @@ static void releaseMonitor(_GLFWwindow* window)
     }
 }
 
+#if defined(XI_GesturePinchBegin)
+// Reports an XI 2.4 touchpad pinch as trackpad zoom and rotate events
+//
+static void handlePinchGesture(int type, const XIGesturePinchEvent* gesture)
+{
+    if (type == XI_GesturePinchBegin || type == XI_GesturePinchEnd)
+    {
+        _glfw.x11.xi.pinchScale = 1.0;
+        return;
+    }
+
+    _GLFWwindow* window = NULL;
+    if (XFindContext(_glfw.x11.display,
+                     gesture->event,
+                     _glfw.x11.context,
+                     (XPointer*) &window) != 0)
+    {
+        return;
+    }
+
+    // The protocol reports scale relative to the start of the gesture, GLFW
+    // reports it relative to the previous event
+    if (gesture->scale > 0.0 && gesture->scale != _glfw.x11.xi.pinchScale)
+    {
+        _glfwInputTrackpadZoom(window, gesture->scale / _glfw.x11.xi.pinchScale);
+        _glfw.x11.xi.pinchScale = gesture->scale;
+    }
+
+    // The protocol reports clockwise degrees, GLFW reports counter-clockwise
+    // degrees to match macOS
+    if (gesture->delta_angle != 0.0)
+        _glfwInputTrackpadRotate(window, -gesture->delta_angle);
+}
+#endif
+
 // Process the specified X event
 //
 static void processEvent(XEvent *event)
@@ -1184,6 +1236,23 @@ static void processEvent(XEvent *event)
 
     if (event->type == GenericEvent)
     {
+#if defined(XI_GesturePinchBegin)
+        if (_glfw.x11.xi.gestures &&
+            event->xcookie.extension == _glfw.x11.xi.majorOpcode &&
+            (event->xcookie.evtype == XI_GesturePinchBegin ||
+             event->xcookie.evtype == XI_GesturePinchUpdate ||
+             event->xcookie.evtype == XI_GesturePinchEnd))
+        {
+            if (XGetEventData(_glfw.x11.display, &event->xcookie))
+            {
+                handlePinchGesture(event->xcookie.evtype, event->xcookie.data);
+                XFreeEventData(_glfw.x11.display, &event->xcookie);
+            }
+
+            return;
+        }
+#endif
+
         if (_glfw.x11.xi.available)
         {
             _GLFWwindow* window = _glfw.x11.disabledCursorWindow;

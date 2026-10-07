@@ -648,13 +648,24 @@ static GLFWbool initExtensions(void)
                             &_glfw.x11.xi.errorBase))
         {
             _glfw.x11.xi.major = 2;
+#if defined(XI_GesturePinchBegin)
+            // XI 2.4 adds touchpad gestures; the server replies with the
+            // highest version both sides support, which may be lower
+            _glfw.x11.xi.minor = 4;
+#else
             _glfw.x11.xi.minor = 0;
+#endif
 
             if (XIQueryVersion(_glfw.x11.display,
                                &_glfw.x11.xi.major,
                                &_glfw.x11.xi.minor) == Success)
             {
                 _glfw.x11.xi.available = GLFW_TRUE;
+#if defined(XI_GesturePinchBegin)
+                _glfw.x11.xi.gestures =
+                    _glfw.x11.xi.major > 2 ||
+                    (_glfw.x11.xi.major == 2 && _glfw.x11.xi.minor >= 4);
+#endif
             }
         }
     }

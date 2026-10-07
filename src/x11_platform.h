@@ -845,6 +845,10 @@ typedef struct _GLFWlibraryX11
         int         errorBase;
         int         major;
         int         minor;
+        // Whether the server delivers XI 2.4 touchpad gesture events
+        GLFWbool    gestures;
+        // Pinch scale of the previous event, relative to the start of the gesture
+        double      pinchScale;
         PFN_XIQueryVersion QueryVersion;
         PFN_XISelectEvents SelectEvents;
     } xi;

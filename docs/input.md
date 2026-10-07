@@ -610,8 +610,13 @@ void scroll_detail_callback(GLFWwindow* window, double xoffset, double yoffset, 
 }
 ```
 
-Scroll flags are currently only reported on macOS.  Other platforms call the
-scroll detail callback with no flags set.
+Which flags are reported depends on the platform.
+
+Platform | @ref GLFW_SCROLL_PRECISE | @ref GLFW_SCROLL_BEGIN and @ref GLFW_SCROLL_END | @ref GLFW_SCROLL_MOMENTUM
+-------- | ------------------------ | ----------------------------------------------- | -------------------------
+macOS    | Yes                      | Yes                                             | Yes
+Wayland  | Yes                      | Yes, inferred from `wl_pointer.axis_stop`       | No, kinetic scrolling is left to the application
+Others   | No                       | No                                              | No
 
 ### Trackpad zoom and rotate {#input_mouse_trackpad_gestures}
 

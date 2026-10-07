@@ -63,6 +63,8 @@
 #define GLFW_PENDING_MOTION     4
 #define GLFW_PENDING_SCROLL     8
 #define GLFW_PENDING_DISCRETE   16
+#define GLFW_PENDING_AXIS_SOURCE 32
+#define GLFW_PENDING_AXIS_STOP  64
 
 static int createTmpfileCloexec(char* tmpname)
 {
@@ -1606,6 +1608,75 @@ static void processPointerScroll(double xoffset, double yoffset)
         _glfwInputScroll(window, xoffset, yoffset);
 }
 
+static void processPointerScrollDetail(double xoffset, double yoffset, int flags)
+{
+    _GLFWwindow* window = wl_surface_get_user_data(_glfw.wl.pointerSurface);
+    if (window->wl.surface == _glfw.wl.pointerSurface)
+        _glfwInputScrollDetail(window, xoffset, yoffset, flags);
+}
+
+// Reports the end of a finger scroll that is still in progress, for example
+// when the pointer leaves the window before the fingers lift
+//
+static void endScrollGesture(void)
+{
+    if (_glfw.wl.scrollGesture && _glfw.wl.pointerSurface)
+        processPointerScrollDetail(0.0, 0.0, GLFW_SCROLL_PRECISE | GLFW_SCROLL_END);
+
+    _glfw.wl.scrollGesture = GLFW_FALSE;
+}
+
+// Wayland has no scroll begin event and no momentum: a finger scroll begins
+// with its first motion after a stop and ends with wl_pointer.axis_stop, and
+// kinetic scrolling is left to the client
+//
+static void processPointerFrameScroll(void)
+{
+    const unsigned int events = _glfw.wl.pending.events;
+    int flags = 0;
+    GLFWbool finger = GLFW_FALSE;
+
+    if (events & GLFW_PENDING_AXIS_SOURCE)
+    {
+        const uint32_t source = _glfw.wl.pending.axisSource;
+        finger = source == WL_POINTER_AXIS_SOURCE_FINGER;
+        if (finger || source == WL_POINTER_AXIS_SOURCE_CONTINUOUS)
+            flags |= GLFW_SCROLL_PRECISE;
+    }
+
+    if (events & GLFW_PENDING_DISCRETE)
+    {
+        processPointerScrollDetail(_glfw.wl.pending.discreteX,
+                                   _glfw.wl.pending.discreteY,
+                                   flags);
+        return;
+    }
+
+    if (!(events & (GLFW_PENDING_SCROLL | GLFW_PENDING_AXIS_STOP)))
+        return;
+
+    if ((events & GLFW_PENDING_SCROLL) && finger && !_glfw.wl.scrollGesture)
+    {
+        flags |= GLFW_SCROLL_BEGIN;
+        _glfw.wl.scrollGesture = GLFW_TRUE;
+    }
+
+    if ((events & GLFW_PENDING_AXIS_STOP) && _glfw.wl.scrollGesture)
+    {
+        flags |= GLFW_SCROLL_PRECISE | GLFW_SCROLL_END;
+        _glfw.wl.scrollGesture = GLFW_FALSE;
+    }
+
+    if (events & GLFW_PENDING_SCROLL)
+    {
+        processPointerScrollDetail(_glfw.wl.pending.scrollX,
+                                   _glfw.wl.pending.scrollY,
+                                   flags);
+    }
+    else
+        processPointerScrollDetail(0.0, 0.0, flags);
+}
+
 static void pinchHandleBegin(void* userData,
                              struct zwp_pointer_gesture_pinch_v1* pinch,
                              uint32_t serial,
@@ -1813,6 +1884,8 @@ static void pointerHandleFrame(void* userData, struct wl_pointer* pointer)
 {
     if (_glfw.wl.pending.events & GLFW_PENDING_SURFACE)
     {
+        endScrollGesture();
+
         if (_glfw.wl.pointerSurface)
             processPointerLeaveSurface(_glfw.wl.pointerSurface);
 
@@ -1829,10 +1902,7 @@ static void pointerHandleFrame(void* userData, struct wl_pointer* pointer)
     if (_glfw.wl.pending.events & GLFW_PENDING_BUTTON)
         processPointerButton(_glfw.wl.pending.button, _glfw.wl.pending.action);
 
-    if (_glfw.wl.pending.events & GLFW_PENDING_DISCRETE)
-        processPointerScroll(_glfw.wl.pending.discreteX, _glfw.wl.pending.discreteY);
-    else if (_glfw.wl.pending.events & GLFW_PENDING_SCROLL)
-        processPointerScroll(_glfw.wl.pending.scrollX, _glfw.wl.pending.scrollY);
+    processPointerFrameScroll();
 
     memset(&_glfw.wl.pending, 0, sizeof(_glfw.wl.pending));
 }
@@ -1841,6 +1911,11 @@ static void pointerHandleAxisSource(void* userData,
                                     struct wl_pointer* pointer,
                                     uint32_t axisSource)
 {
+    if (!_glfw.wl.pointerSurface)
+        return;
+
+    _glfw.wl.pending.events |= GLFW_PENDING_AXIS_SOURCE;
+    _glfw.wl.pending.axisSource = axisSource;
 }
 
 static void pointerHandleAxisStop(void* userData,
@@ -1848,6 +1923,10 @@ static void pointerHandleAxisStop(void* userData,
                                   uint32_t time,
                                   uint32_t axis)
 {
+    if (!_glfw.wl.pointerSurface)
+        return;
+
+    _glfw.wl.pending.events |= GLFW_PENDING_AXIS_STOP;
 }
 
 static void pointerHandleAxisDiscrete(void* userData,

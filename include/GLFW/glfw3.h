@@ -5562,8 +5562,11 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun ca
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *
- *  @remark Only macOS reports flags.  Other platforms call this callback with
- *  the same offsets as the scroll callback and no flags set.
+ *  @remark macOS reports every flag.  Wayland reports @ref GLFW_SCROLL_PRECISE,
+ *  @ref GLFW_SCROLL_BEGIN and @ref GLFW_SCROLL_END but never @ref
+ *  GLFW_SCROLL_MOMENTUM, as kinetic scrolling is left to the application there.
+ *  Other platforms call this callback with the same offsets as the scroll
+ *  callback and no flags set.
  *
  *  @thread_safety This function must only be called from the main thread.
  *

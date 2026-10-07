@@ -27,6 +27,7 @@ Base: upstream `3.5.1`.
 | Add scroll detail callback with source and gesture phase | macOS (flags), all (callback) | RocketWerkz extension |
 | Wayland: Add trackpad zoom and rotate events | Wayland | glfw/glfw#2419 by pfg, Wayland part, ported to 3.5.1 and fixed |
 | Add ROCKETWERKZ.md | - | RocketWerkz |
+| Wayland: Report scroll detail flags | Wayland | RocketWerkz extension |
 
 The API they add:
 
@@ -34,8 +35,8 @@ The API they add:
 - `glfwSetTrackpadRotateCallback`: per-event degrees, positive
   counter-clockwise (macOS, Wayland)
 - `glfwSetScrollDetailCallback` and the `GLFW_SCROLL_*` flags: scroll offsets
-  with their source and gesture phase (flags on macOS; the callback works
-  everywhere)
+  with their source and gesture phase (flags on macOS and Wayland; the
+  callback works everywhere)
 
 The README, news and contributor list are deliberately left untouched, because
 upstream edits them every release and they would conflict on each rebase. This

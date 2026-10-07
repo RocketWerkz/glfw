@@ -507,9 +507,13 @@ typedef struct _GLFWlibraryWayland
         double                  scrollY;
         double                  discreteX;
         double                  discreteY;
+        uint32_t                axisSource;
         int                     button;
         int                     action;
     } pending;
+
+    // Whether a finger scroll has begun and not yet stopped
+    GLFWbool                    scrollGesture;
 
     struct {
         void*                   handle;

@@ -397,6 +397,17 @@ static void scroll_callback(GLFWwindow* window, double x, double y)
            counter++, slot->number, glfwGetTime(), x, y);
 }
 
+static void scroll_detail_callback(GLFWwindow* window, double x, double y, int flags)
+{
+    Slot* slot = glfwGetWindowUserPointer(window);
+    printf("%08x to %i at %0.3f: Scroll Detail: %0.3f %0.3f%s%s%s%s\n",
+           counter++, slot->number, glfwGetTime(), x, y,
+           flags & GLFW_SCROLL_PRECISE ? " precise" : "",
+           flags & GLFW_SCROLL_BEGIN ? " begin" : "",
+           flags & GLFW_SCROLL_END ? " end" : "",
+           flags & GLFW_SCROLL_MOMENTUM ? " momentum" : "");
+}
+
 static void trackpad_zoom_callback(GLFWwindow* window, double scale)
 {
     Slot* slot = glfwGetWindowUserPointer(window);
@@ -661,6 +672,7 @@ int main(int argc, char** argv)
         glfwSetCursorPosCallback(slots[i].window, cursor_position_callback);
         glfwSetCursorEnterCallback(slots[i].window, cursor_enter_callback);
         glfwSetScrollCallback(slots[i].window, scroll_callback);
+        glfwSetScrollDetailCallback(slots[i].window, scroll_detail_callback);
         glfwSetTrackpadZoomCallback(slots[i].window, trackpad_zoom_callback);
         glfwSetTrackpadRotateCallback(slots[i].window, trackpad_rotate_callback);
         glfwSetKeyCallback(slots[i].window, key_callback);

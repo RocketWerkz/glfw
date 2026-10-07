@@ -150,6 +150,11 @@ information on what to include when reporting a bug.
    `GLFW_NATIVE_CONTEXT_API` (#2518)
  - [Cocoa & Wayland] Added `glfwSetTrackpadZoomCallback` and `glfwSetTrackpadRotateCallback`
    for trackpad zoom and rotate events (#90)
+ - Added `glfwSetScrollDetailCallback`, `GLFWscrolldetailfun` and the
+   `GLFW_SCROLL_PRECISE`, `GLFW_SCROLL_BEGIN`, `GLFW_SCROLL_END` and
+   `GLFW_SCROLL_MOMENTUM` flags for scroll source and gesture phase
+ - [Cocoa] Reported scroll source and gesture phase through the scroll detail
+   callback
 
 
 ## Contact

@@ -20,6 +20,13 @@ Trackpad zoom and rotate events are now supported on macOS and Wayland using
 [glfwSetTrackpadZoomCallback](@ref glfwSetTrackpadZoomCallback) and [glfwSetTrackpadRotateCallback](@ref glfwSetTrackpadRotateCallback). These
 events will not yet emit anything on Windows or X11.
 
+### Scroll source and gesture phase on macOS
+
+The new [glfwSetScrollDetailCallback](@ref glfwSetScrollDetailCallback) reports
+scrolling together with [scroll flags](@ref scroll_flags) that say whether the
+offsets came from a trackpad and where a gesture and its momentum begin and
+end.  Flags are only set on macOS for now.
+
 ## Caveats {#caveats}
 
 ## Deprecations {#deprecations}

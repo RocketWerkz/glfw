@@ -563,6 +563,41 @@ extern "C" {
 
 /*! @} */
 
+/*! @defgroup scroll_flags Scroll flags
+ *  @brief Scroll source and gesture phase flags.
+ *
+ *  See [scroll input](@ref scrolling) for how these are used.
+ *
+ *  @ingroup input
+ *  @{ */
+
+/*! @brief If this bit is set the offsets are continuous.
+ *
+ *  If this bit is set the offsets come from a device with continuous scrolling,
+ *  such as a trackpad, rather than from discrete mouse wheel steps.
+ */
+#define GLFW_SCROLL_PRECISE      0x0001
+/*! @brief If this bit is set the event begins a scroll gesture.
+ *
+ *  If this bit is set the fingers began a scroll gesture or, together with
+ *  @ref GLFW_SCROLL_MOMENTUM, momentum scrolling began.
+ */
+#define GLFW_SCROLL_BEGIN        0x0002
+/*! @brief If this bit is set the event ends a scroll gesture.
+ *
+ *  If this bit is set the fingers lifted or the gesture was cancelled or,
+ *  together with @ref GLFW_SCROLL_MOMENTUM, momentum scrolling ended.
+ */
+#define GLFW_SCROLL_END          0x0004
+/*! @brief If this bit is set the event is momentum scrolling.
+ *
+ *  If this bit is set the event is momentum scrolling that continues after the
+ *  fingers lifted.
+ */
+#define GLFW_SCROLL_MOMENTUM     0x0008
+
+/*! @} */
+
 /*! @defgroup buttons Mouse buttons
  *  @brief Mouse button IDs.
  *
@@ -1870,6 +1905,27 @@ typedef void (* GLFWcursorenterfun)(GLFWwindow* window, int entered);
  *  @ingroup input
  */
 typedef void (* GLFWscrollfun)(GLFWwindow* window, double xoffset, double yoffset);
+
+/*! @brief The function pointer type for scroll detail callbacks.
+ *
+ *  This is the function pointer type for scroll detail callbacks.  A scroll
+ *  detail callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, double xoffset, double yoffset, int flags)
+ *  @endcode
+ *
+ *  @param[in] window The window that received the event.
+ *  @param[in] xoffset The scroll offset along the x-axis.
+ *  @param[in] yoffset The scroll offset along the y-axis.
+ *  @param[in] flags Bit field describing the source of the offsets and the
+ *  gesture phase.  See [scroll flags](@ref scroll_flags).
+ *
+ *  @sa @ref scrolling
+ *  @sa @ref glfwSetScrollDetailCallback
+ *
+ *  @ingroup input
+ */
+typedef void (* GLFWscrolldetailfun)(GLFWwindow* window, double xoffset, double yoffset, int flags);
 
 /*! @brief The function pointer type for trackpad zoom callbacks.
  *
@@ -5470,6 +5526,47 @@ GLFWAPI GLFWcursorenterfun glfwSetCursorEnterCallback(GLFWwindow* window, GLFWcu
  *  @ingroup input
  */
 GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun callback);
+
+/*! @brief Sets the scroll detail callback.
+ *
+ *  This function sets the scroll detail callback of the specified window,
+ *  which receives the same scrolling input as the
+ *  [scroll callback](@ref glfwSetScrollCallback) together with
+ *  [flags](@ref scroll_flags) describing where the offsets came from and which
+ *  gesture phase they belong to.
+ *
+ *  When a gesture begins or ends, the callback may also be called with zero
+ *  offsets, so that the gesture boundary is reported.  The scroll callback is
+ *  not called for these.  An end may arrive without a matching begin when a
+ *  gesture is cancelled before it starts.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] callback The new scroll detail callback, or `NULL` to remove the
+ *  currently set callback.
+ *  @return The previously set callback, or `NULL` if no callback was set or the
+ *  library had not been [initialized](@ref intro_init).
+ *
+ *  @callback_signature
+ *  @code
+ *  void function_name(GLFWwindow* window, double xoffset, double yoffset, int flags)
+ *  @endcode
+ *  For more information about the callback parameters, see the
+ *  [function pointer type](@ref GLFWscrolldetailfun).
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @remark Only macOS reports flags.  Other platforms call this callback with
+ *  the same offsets as the scroll callback and no flags set.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref scrolling
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+GLFWAPI GLFWscrolldetailfun glfwSetScrollDetailCallback(GLFWwindow* window, GLFWscrolldetailfun callback);
 
 /*! @brief Sets the trackpad zoom callback.
  *

@@ -1691,16 +1691,24 @@ static void pointerGesturesHandlePinchMotion(void *userData,
 		                                     wl_fixed_t rotation)
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
+    if (!window)
+        return;
 
     double zoom_value = wl_fixed_to_double(scale);
-    double prev_zoom_value = _glfw.wl.pinchGesturePreviousScale;
-    double zoom_delta = zoom_value / prev_zoom_value;
-    _glfw.wl.pinchGesturePreviousScale = zoom_value;
+    if (zoom_value > 0.0)
+    {
+        double zoom_delta = zoom_value / _glfw.wl.pinchGesturePreviousScale;
+        _glfw.wl.pinchGesturePreviousScale = zoom_value;
 
-    double rotation_value = wl_fixed_to_double(rotation);
+        if (zoom_delta != 1.0)
+            _glfwInputTrackpadZoom(window, zoom_delta);
+    }
 
-    _glfwInputTrackpadZoom(window, zoom_delta);
-    _glfwInputTrackpadRotate(window, rotation_value);
+    // The protocol reports clockwise degrees, GLFW reports counter-clockwise
+    // degrees to match macOS
+    double rotation_value = -wl_fixed_to_double(rotation);
+    if (rotation_value != 0.0)
+        _glfwInputTrackpadRotate(window, rotation_value);
 }
 
 static void pointerGesturesHandlePinchEnd(void *userData,
@@ -1979,6 +1987,12 @@ static void seatHandleCapabilities(void* userData,
     }
     else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && _glfw.wl.pointer)
     {
+        if (_glfw.wl.pinchGesture)
+        {
+            zwp_pointer_gesture_pinch_v1_destroy(_glfw.wl.pinchGesture);
+            _glfw.wl.pinchGesture = NULL;
+        }
+
         wl_pointer_destroy(_glfw.wl.pointer);
         _glfw.wl.pointer = NULL;
     }
@@ -2213,8 +2227,10 @@ void _glfwAddDataDeviceListenerWayland(struct wl_data_device* device)
 
 void _glfwAddPointerGesturesListeners(struct zwp_pointer_gestures_v1* pointer_gestures)
 {
-    if (_glfw.wl.pinchGesture) return;
-    if (!_glfw.wl.pointer) return;
+    // The gestures global and the seat pointer can arrive in either order,
+    // so this is called for both and only binds once both exist
+    if (!pointer_gestures || !_glfw.wl.pointer || _glfw.wl.pinchGesture)
+        return;
 
     _glfw.wl.pinchGesture =
         zwp_pointer_gestures_v1_get_pinch_gesture(
@@ -2223,7 +2239,6 @@ void _glfwAddPointerGesturesListeners(struct zwp_pointer_gestures_v1* pointer_ge
     zwp_pointer_gesture_pinch_v1_add_listener(_glfw.wl.pinchGesture,
                                               &pinchGestureListener,
                                               NULL);
-    // zwp_pointer_gestures_v1
 }
 
 

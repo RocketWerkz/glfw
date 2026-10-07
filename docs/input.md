@@ -608,7 +608,8 @@ For trackpad rotate gestures, set the trackpadRotateCallback.
 glfwSetTrackpadRotateCallback(window, trackpad_rotate_callback);
 ```
 
-The callback function recieves the angle, in degrees, to rotate by.
+The callback function receives the angle, in degrees, to rotate by since the
+previous event. Positive angles are counter-clockwise.
 
 ```c
 static void trackpad_rotate_callback(GLFWwindow* window, double angle)

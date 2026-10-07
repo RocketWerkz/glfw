@@ -338,6 +338,30 @@ void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset)
 
     if (window->callbacks.scroll)
         window->callbacks.scroll((GLFWwindow*) window, xoffset, yoffset);
+
+    if (window->callbacks.scrollDetail)
+        window->callbacks.scrollDetail((GLFWwindow*) window, xoffset, yoffset, 0);
+}
+
+// Notifies shared code of a scroll event with its source and gesture phase
+//
+void _glfwInputScrollDetail(_GLFWwindow* window, double xoffset, double yoffset, int flags)
+{
+    assert(window != NULL);
+    assert(isfinite(xoffset));
+    assert(isfinite(yoffset));
+
+    const GLFWbool moved = xoffset != 0.0 || yoffset != 0.0;
+
+    if (moved && window->callbacks.scroll)
+        window->callbacks.scroll((GLFWwindow*) window, xoffset, yoffset);
+
+    // A gesture boundary is reported even when it carries no offset
+    if (!moved && !(flags & (GLFW_SCROLL_BEGIN | GLFW_SCROLL_END)))
+        return;
+
+    if (window->callbacks.scrollDetail)
+        window->callbacks.scrollDetail((GLFWwindow*) window, xoffset, yoffset, flags);
 }
 
 // Notifies shared code of a trackpad zoom event
@@ -1050,6 +1074,18 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* handle,
     assert(window != NULL);
 
     _GLFW_SWAP(GLFWscrollfun, window->callbacks.scroll, cbfun);
+    return cbfun;
+}
+
+GLFWAPI GLFWscrolldetailfun glfwSetScrollDetailCallback(GLFWwindow* handle,
+                                                        GLFWscrolldetailfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_SWAP(GLFWscrolldetailfun, window->callbacks.scrollDetail, cbfun);
     return cbfun;
 }
 

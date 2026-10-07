@@ -578,6 +578,7 @@ struct _GLFWwindow
         GLFWcursorposfun          cursorPos;
         GLFWcursorenterfun        cursorEnter;
         GLFWscrollfun             scroll;
+        GLFWscrolldetailfun       scrollDetail;
         GLFWtrackpadzoomfun       trackpadZoom;
         GLFWtrackpadrotatefun     trackpadRotate;
         GLFWkeyfun                key;
@@ -938,6 +939,7 @@ void _glfwInputKey(_GLFWwindow* window,
 void _glfwInputChar(_GLFWwindow* window,
                     uint32_t codepoint, int mods, GLFWbool plain);
 void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset);
+void _glfwInputScrollDetail(_GLFWwindow* window, double xoffset, double yoffset, int flags);
 void _glfwInputTrackpadZoom(_GLFWwindow* window, double scale);
 void _glfwInputTrackpadRotate(_GLFWwindow* window, double angle);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);

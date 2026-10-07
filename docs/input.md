@@ -581,6 +581,38 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 
 A normal mouse wheel, being vertical, provides offsets along the Y-axis.
 
+If you also need to know where the offsets came from and where a gesture starts
+and ends, set a scroll detail callback.
+
+```c
+glfwSetScrollDetailCallback(window, scroll_detail_callback);
+```
+
+The callback function receives the same offsets as the scroll callback, along
+with [scroll flags](@ref scroll_flags).  @ref GLFW_SCROLL_PRECISE is set for
+continuous offsets from a trackpad, @ref GLFW_SCROLL_BEGIN and @ref
+GLFW_SCROLL_END mark the start and end of a gesture, and @ref
+GLFW_SCROLL_MOMENTUM is set for momentum scrolling after the fingers lift.  The
+callback may be called with zero offsets to report a gesture boundary.
+
+A gesture boundary often carries no offset, so act on the flags first.  This
+example locks each trackpad swipe, including its momentum, to the axis it first
+moves along.
+
+```c
+void scroll_detail_callback(GLFWwindow* window, double xoffset, double yoffset, int flags)
+{
+    if ((flags & GLFW_SCROLL_BEGIN) && !(flags & GLFW_SCROLL_MOMENTUM))
+        my_app->scroll_axis = AXIS_UNDECIDED;
+
+    if (my_app->scroll_axis == AXIS_UNDECIDED && (xoffset != 0.0 || yoffset != 0.0))
+        my_app->scroll_axis = fabs(xoffset) > fabs(yoffset) ? AXIS_X : AXIS_Y;
+}
+```
+
+Scroll flags are currently only reported on macOS.  Other platforms call the
+scroll detail callback with no flags set.
+
 ### Trackpad zoom and rotate {#input_mouse_trackpad_gestures}
 
 Trackpad events are currently only available on macOS.

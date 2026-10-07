@@ -631,15 +631,31 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 {
     double deltaX = [event scrollingDeltaX];
     double deltaY = [event scrollingDeltaY];
+    int flags = 0;
 
     if ([event hasPreciseScrollingDeltas])
     {
         deltaX *= 0.1;
         deltaY *= 0.1;
+        flags |= GLFW_SCROLL_PRECISE;
     }
 
-    if (fabs(deltaX) > 0.0 || fabs(deltaY) > 0.0)
-        _glfwInputScroll(window, deltaX, deltaY);
+    // Momentum events carry no finger phase, so whichever phase is set
+    // describes this event
+    NSEventPhase phase = [event phase];
+    const NSEventPhase momentumPhase = [event momentumPhase];
+    if (momentumPhase != NSEventPhaseNone)
+    {
+        phase = momentumPhase;
+        flags |= GLFW_SCROLL_MOMENTUM;
+    }
+
+    if (phase == NSEventPhaseBegan)
+        flags |= GLFW_SCROLL_BEGIN;
+    else if (phase == NSEventPhaseEnded || phase == NSEventPhaseCancelled)
+        flags |= GLFW_SCROLL_END;
+
+    _glfwInputScrollDetail(window, deltaX, deltaY, flags);
 }
 
 - (void)magnifyWithEvent:(NSEvent *)event

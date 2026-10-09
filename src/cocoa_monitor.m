@@ -380,47 +380,133 @@ void _glfwPollMonitorsCocoa(void)
     _glfw_free(displays);
 }
 
+// Returns whether the specified video mode is the requested size, refresh rate
+// and color depth, where color channels left to GLFW match any depth
+//
+static GLFWbool isRequestedMode(const GLFWvidmode* desired, const GLFWvidmode* mode)
+{
+    return desired->width == mode->width &&
+           desired->height == mode->height &&
+           desired->refreshRate == mode->refreshRate &&
+           (desired->redBits == GLFW_DONT_CARE || desired->redBits == mode->redBits) &&
+           (desired->greenBits == GLFW_DONT_CARE || desired->greenBits == mode->greenBits) &&
+           (desired->blueBits == GLFW_DONT_CARE || desired->blueBits == mode->blueBits);
+}
+
+// Returns whether two display modes are the same mode, telling a HiDPI mode
+// from the non-HiDPI mode with the same size and refresh rate
+//
+static GLFWbool isSameDisplayMode(CGDisplayModeRef first, CGDisplayModeRef second)
+{
+    const GLFWvidmode firstMode = vidmodeFromCGDisplayMode(first, 0.0);
+    const GLFWvidmode secondMode = vidmodeFromCGDisplayMode(second, 0.0);
+
+    return CGDisplayModeGetWidth(first) == CGDisplayModeGetWidth(second) &&
+           CGDisplayModeGetHeight(first) == CGDisplayModeGetHeight(second) &&
+           CGDisplayModeGetPixelWidth(first) == CGDisplayModeGetPixelWidth(second) &&
+           CGDisplayModeGetPixelHeight(first) == CGDisplayModeGetPixelHeight(second) &&
+           CGDisplayModeGetRefreshRate(first) == CGDisplayModeGetRefreshRate(second) &&
+           firstMode.redBits == secondMode.redBits &&
+           firstMode.greenBits == secondMode.greenBits &&
+           firstMode.blueBits == secondMode.blueBits;
+}
+
+// Returns the mode in place before GLFW first changed it, the current mode or
+// the desktop mode of the mode list if the specified video mode names it, in
+// that order, so a HiDPI desktop is restored rather than replaced by a
+// non-HiDPI mode with the same size and refresh rate
+//
+static CGDisplayModeRef findKnownMode(_GLFWmonitor* monitor,
+                                      CGDisplayModeRef current,
+                                      const GLFWvidmode* mode)
+{
+    const CGDisplayModeRef known[] =
+    {
+        monitor->ns.previousMode,
+        current,
+        monitor->ns.desktopMode
+    };
+
+    for (int i = 0;  i < 3;  i++)
+    {
+        if (!known[i])
+            continue;
+
+        const GLFWvidmode candidate =
+            vidmodeFromCGDisplayMode(known[i], monitor->ns.fallbackRefreshRate);
+        if (isRequestedMode(mode, &candidate))
+            return known[i];
+    }
+
+    return NULL;
+}
+
 // Change the current video mode
 //
 void _glfwSetVideoModeCocoa(_GLFWmonitor* monitor, const GLFWvidmode* desired)
 {
-    GLFWvidmode current;
-    _glfwGetVideoModeCocoa(monitor, &current);
-
-    const GLFWvidmode* best = _glfwChooseVideoMode(monitor, desired);
-    if (_glfwCompareVideoModes(&current, best) == 0)
-        return;
-
-    CFArrayRef modes = CGDisplayCopyAllDisplayModes(monitor->ns.displayID, NULL);
-    const CFIndex count = CFArrayGetCount(modes);
-    CGDisplayModeRef native = NULL;
-
-    for (CFIndex i = 0;  i < count;  i++)
+    CGDisplayModeRef current = CGDisplayCopyDisplayMode(monitor->ns.displayID);
+    if (!current)
     {
-        CGDisplayModeRef dm = (CGDisplayModeRef) CFArrayGetValueAtIndex(modes, i);
-        if (!modeIsGood(dm))
-            continue;
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to query display mode");
+        return;
+    }
 
-        const GLFWvidmode mode =
-            vidmodeFromCGDisplayMode(dm, monitor->ns.fallbackRefreshRate);
-        if (_glfwCompareVideoModes(best, &mode) == 0)
+    // These modes may be HiDPI modes, which the closest match cannot pick and
+    // the non-HiDPI modes below cannot stand in for
+    CGDisplayModeRef native = findKnownMode(monitor, current, desired);
+    CFArrayRef modes = NULL;
+
+    if (!native)
+    {
+        const GLFWvidmode* best = _glfwChooseVideoMode(monitor, desired);
+        if (best)
+            native = findKnownMode(monitor, current, best);
+
+        if (best && !native)
         {
-            native = dm;
-            break;
+            modes = CGDisplayCopyAllDisplayModes(monitor->ns.displayID, NULL);
+            const CFIndex count = CFArrayGetCount(modes);
+
+            for (CFIndex i = 0;  i < count;  i++)
+            {
+                CGDisplayModeRef dm = (CGDisplayModeRef) CFArrayGetValueAtIndex(modes, i);
+                if (!modeIsGood(dm))
+                    continue;
+
+                const GLFWvidmode mode =
+                    vidmodeFromCGDisplayMode(dm, monitor->ns.fallbackRefreshRate);
+                if (_glfwCompareVideoModes(best, &mode) == 0)
+                {
+                    native = dm;
+                    break;
+                }
+            }
         }
     }
 
-    if (native)
+    if (native && !isSameDisplayMode(native, current))
     {
-        if (monitor->ns.previousMode == NULL)
-            monitor->ns.previousMode = CGDisplayCopyDisplayMode(monitor->ns.displayID);
+        if (monitor->ns.previousMode &&
+            isSameDisplayMode(native, monitor->ns.previousMode))
+        {
+            _glfwRestoreVideoModeCocoa(monitor);
+        }
+        else
+        {
+            if (monitor->ns.previousMode == NULL)
+                monitor->ns.previousMode = CGDisplayModeRetain(current);
 
-        CGDisplayFadeReservationToken token = beginFadeReservation();
-        CGDisplaySetDisplayMode(monitor->ns.displayID, native, NULL);
-        endFadeReservation(token);
+            CGDisplayFadeReservationToken token = beginFadeReservation();
+            CGDisplaySetDisplayMode(monitor->ns.displayID, native, NULL);
+            endFadeReservation(token);
+        }
     }
 
-    CFRelease(modes);
+    if (modes)
+        CFRelease(modes);
+
+    CGDisplayModeRelease(current);
 }
 
 // Restore the previously saved (original) video mode
@@ -446,6 +532,8 @@ void _glfwRestoreVideoModeCocoa(_GLFWmonitor* monitor)
 
 void _glfwFreeMonitorCocoa(_GLFWmonitor* monitor)
 {
+    if (monitor->ns.desktopMode)
+        CGDisplayModeRelease(monitor->ns.desktopMode);
 }
 
 void _glfwGetMonitorPosCocoa(_GLFWmonitor* monitor, int* xpos, int* ypos)
@@ -518,7 +606,7 @@ GLFWvidmode* _glfwGetVideoModesCocoa(_GLFWmonitor* monitor, int* count)
 
     CFArrayRef modes = CGDisplayCopyAllDisplayModes(monitor->ns.displayID, NULL);
     const CFIndex found = CFArrayGetCount(modes);
-    GLFWvidmode* result = _glfw_calloc(found, sizeof(GLFWvidmode));
+    GLFWvidmode* result = _glfw_calloc(found + 1, sizeof(GLFWvidmode));
 
     for (CFIndex i = 0;  i < found;  i++)
     {
@@ -545,6 +633,41 @@ GLFWvidmode* _glfwGetVideoModesCocoa(_GLFWmonitor* monitor, int* count)
     }
 
     CFRelease(modes);
+
+    // The desktop mode is listed too: it is often a HiDPI mode, which the query
+    // above leaves out, and without it a full screen window could only use the
+    // desktop resolution by changing to a different mode. Its native mode is
+    // kept so the entry can be set even after the current mode has changed
+    CGDisplayModeRef desktop = monitor->ns.previousMode;
+    if (desktop)
+        CGDisplayModeRetain(desktop);
+    else
+        desktop = CGDisplayCopyDisplayMode(monitor->ns.displayID);
+
+    if (monitor->ns.desktopMode)
+        CGDisplayModeRelease(monitor->ns.desktopMode);
+    monitor->ns.desktopMode = desktop;
+
+    if (desktop)
+    {
+        const GLFWvidmode mode =
+            vidmodeFromCGDisplayMode(desktop, monitor->ns.fallbackRefreshRate);
+
+        int j;
+
+        for (j = 0;  j < *count;  j++)
+        {
+            if (_glfwCompareVideoModes(result + j, &mode) == 0)
+                break;
+        }
+
+        if (j == *count)
+        {
+            (*count)++;
+            result[*count - 1] = mode;
+        }
+    }
+
     return result;
 
     } // autoreleasepool

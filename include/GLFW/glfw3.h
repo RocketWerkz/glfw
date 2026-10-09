@@ -2946,6 +2946,12 @@ GLFWAPI GLFWmonitorfun glfwSetMonitorCallback(GLFWmonitorfun callback);
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
  *
+ *  @remark __macOS:__ The array holds the non-HiDPI modes plus the desktop mode
+ *  at the time the array was created, which is usually a HiDPI mode.  A request
+ *  matching the mode in place before GLFW changed it restores that exact mode;
+ *  otherwise a request matching the current mode with an explicit refresh rate
+ *  keeps it.
+ *
  *  @pointer_lifetime The returned array is allocated and freed by GLFW.  You
  *  should not free it yourself.  It is valid until the specified monitor is
  *  disconnected, this function is called again for that monitor or the library

@@ -29,6 +29,7 @@ Base: upstream `3.5.1`.
 | Add ROCKETWERKZ.md | - | RocketWerkz |
 | Wayland: Report scroll detail flags | Wayland | RocketWerkz extension |
 | X11: Add trackpad zoom and rotate events | X11 (XInput 2.4) | RocketWerkz |
+| Cocoa: Keep the desktop video mode in full screen | macOS | RocketWerkz |
 
 The API they add:
 

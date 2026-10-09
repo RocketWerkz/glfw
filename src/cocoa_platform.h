@@ -197,6 +197,7 @@ typedef struct _GLFWmonitorNS
 {
     CGDirectDisplayID   displayID;
     CGDisplayModeRef    previousMode;
+    CGDisplayModeRef    desktopMode;
     uint32_t            unitNumber;
     id                  screen;
     double              fallbackRefreshRate;
